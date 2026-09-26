@@ -20,6 +20,7 @@ from PyQt6.QtGui import QMouseEvent
 
 from src.installer_backend import is_windows
 from src.ui.icon_manager import IconManager
+from src.i18n import tr, tr_category
 
 
 class AppCard(QFrame):
@@ -72,7 +73,7 @@ class AppCard(QFrame):
         self.title_lbl.setObjectName("CardAppTitle")
         meta.addWidget(self.title_lbl)
 
-        cat_text = self.app_data.get("category", "")
+        cat_text = tr_category(self.app_data.get("category", ""))
         self.cat_lbl = QLabel(cat_text, self)
         self.cat_lbl.setObjectName("CardCategoryBadge")
         meta.addWidget(self.cat_lbl)
@@ -80,14 +81,14 @@ class AppCard(QFrame):
         top.addLayout(meta, 1)
 
         # Action directe — bouton ou badge installé
-        self.action_btn = QPushButton("Installer", self)
+        self.action_btn = QPushButton(tr("card_install"), self)
         self.action_btn.setObjectName("CardActionButton")
         self.action_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.action_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.action_btn.clicked.connect(self._on_action_clicked)
         top.addWidget(self.action_btn)
 
-        self.installed_badge = QLabel("✓ Installé", self)
+        self.installed_badge = QLabel(tr("card_installed"), self)
         self.installed_badge.setObjectName("CardInstalledBadge")
         self.installed_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.installed_badge.hide()
@@ -120,7 +121,7 @@ class AppCard(QFrame):
             bottom.addWidget(self.pkg_lbl, 1)
 
         if self.app_data.get("recommended"):
-            rec = QLabel("★ Recommandé", self)
+            rec = QLabel(tr("card_recommended"), self)
             rec.setObjectName("CardRecommendedBadge")
             bottom.addWidget(rec)
 
@@ -161,9 +162,9 @@ class AppCard(QFrame):
         self.installed_badge.hide()
         self.action_btn.show()
         if self._selected:
-            self.action_btn.setText("✓ Sélectionné")
+            self.action_btn.setText(tr("card_selected"))
         else:
-            self.action_btn.setText("Installer")
+            self.action_btn.setText(tr("card_install"))
         self.action_btn.setProperty("selected", "true" if self._selected else "false")
         self.style().unpolish(self.action_btn)
         self.style().polish(self.action_btn)

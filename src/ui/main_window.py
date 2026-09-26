@@ -34,8 +34,10 @@ from src.installer_backend import (
 )
 from src.ui.app_card import AppCard
 from src.ui.search_dialog import SearchAddDialog
+from src.ui.language_dialog import LanguageDialog
 from src.ui.styles import MAIN_STYLESHEET
 from src.ui.icon_manager import BASE_DIR, IconManager
+from src.i18n import tr, tr_category, set_language, get_language
 
 
 CATEGORY_ICONS = {
@@ -165,9 +167,9 @@ class MainWindow(QMainWindow):
         t = QLabel("OmniInstaller", brand_w)
         t.setObjectName("BrandTitle")
         txt.addWidget(t)
-        s = QLabel("Gestionnaire d'applications", brand_w)
-        s.setObjectName("BrandSubtitle")
-        txt.addWidget(s)
+        self.lbl_brand_sub = QLabel(tr("brand_subtitle"), brand_w)
+        self.lbl_brand_sub.setObjectName("BrandSubtitle")
+        txt.addWidget(self.lbl_brand_sub)
         brand_l.addLayout(txt, 1)
         lay.addWidget(brand_w)
 
@@ -179,14 +181,15 @@ class MainWindow(QMainWindow):
         lay.addWidget(sep)
 
         # Section Navigation
-        lay.addWidget(self._sec_lbl("NAVIGATION", sb))
+        self.lbl_nav_section = self._sec_lbl(tr("nav_section"), sb)
+        lay.addWidget(self.lbl_nav_section)
 
-        for key, label, icon in [
-            ("Recommandes",   "Recommandées",            "star"),
-            ("Toutes",        "Toutes les applications", "apps"),
-            ("Selectionnes",  "Sélectionnées (0)",       "check_circle"),
+        for key, icon in [
+            ("Recommandes",   "star"),
+            ("Toutes",        "apps"),
+            ("Selectionnes",  "check_circle"),
         ]:
-            btn = _mk_nav(f"  {label}", sb, icon)
+            btn = _mk_nav(self._nav_text(key), sb, icon)
             btn.clicked.connect(lambda _c, k=key: self._on_cat(k))
             if key == "Toutes":
                 _activate(btn, True)
@@ -196,7 +199,8 @@ class MainWindow(QMainWindow):
             lay.addWidget(btn)
 
         # Section Categories
-        lay.addWidget(self._sec_lbl("CATÉGORIES", sb))
+        self.lbl_cat_section = self._sec_lbl(tr("cat_section"), sb)
+        lay.addWidget(self.lbl_cat_section)
 
         cs = QScrollArea(sb)
         cs.setWidgetResizable(True)
@@ -215,8 +219,7 @@ class MainWindow(QMainWindow):
         for cat in CATEGORIES[1:]:
             icon_key = CATEGORY_ICONS.get(cat, "apps")
             count = sum(1 for a in self.apps_data if a.get("category") == cat)
-            label = cat.replace("&", "&&")
-            btn = _mk_nav(f"  {label}  ({count})", cc, icon_key)
+            btn = _mk_nav(self._nav_text(cat, count), cc, icon_key)
             btn.clicked.connect(lambda _c, c=cat: self._on_cat(c))
             self.nav_buttons[cat] = btn
             cl.addWidget(btn)
@@ -228,7 +231,27 @@ class MainWindow(QMainWindow):
         # Boite systeme
         lay.addWidget(self._build_sys_box(sb))
 
+        # Bouton Paramètres (langue) — pied de sidebar
+        self.btn_settings = _mk_nav(f"  {tr('settings')}", sb, "settings")
+        self.btn_settings.clicked.connect(self._open_settings)
+        lay.addWidget(self.btn_settings)
+
         return sb
+
+    def _nav_text(self, key: str, count: int = 0) -> str:
+        """Libellé traduit d'un bouton de navigation (clé interne inchangée)."""
+        if key == "Recommandes":
+            label = tr("nav_recommended")
+        elif key == "Toutes":
+            label = tr("nav_all")
+        elif key == "Selectionnes":
+            sel = sum(1 for c in self.app_cards if c.is_selected())
+            label = tr("nav_selected", n=sel)
+        else:
+            # Clé = nom de catégorie français du catalogue
+            label = tr_category(key).replace("&", "&&")
+            return f"  {label}  ({count})"
+        return f"  {label}"
 
     def _sec_lbl(self, text: str, parent) -> QLabel:
         lbl = QLabel(text, parent)
@@ -260,13 +283,13 @@ class MainWindow(QMainWindow):
         row.addWidget(self.lbl_badge)
         lay.addLayout(row)
 
-        btn_store = QPushButton("  Ajouter une application", box)
-        btn_store.setObjectName("SearchOnlineBtn")
-        btn_store.setIcon(IconManager.get_ui_icon("plus", 13, "#94A3B8"))
-        btn_store.setIconSize(QSize(13, 13))
-        btn_store.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_store.clicked.connect(self._open_store)
-        lay.addWidget(btn_store)
+        self.btn_store = QPushButton(f"  {tr('add_app')}", box)
+        self.btn_store.setObjectName("SearchOnlineBtn")
+        self.btn_store.setIcon(IconManager.get_ui_icon("plus", 13, "#94A3B8"))
+        self.btn_store.setIconSize(QSize(13, 13))
+        self.btn_store.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_store.clicked.connect(self._open_store)
+        lay.addWidget(self.btn_store)
 
         return box
 
@@ -281,19 +304,19 @@ class MainWindow(QMainWindow):
         lay.setSpacing(10)
 
         # Titre de page (hiérarchie VS Code / GitHub Desktop)
-        title = QLabel("Catalogue", h)
-        title.setObjectName("PageTitle")
-        lay.addWidget(title)
+        self.lbl_page_title = QLabel(tr("page_title"), h)
+        self.lbl_page_title.setObjectName("PageTitle")
+        lay.addWidget(self.lbl_page_title)
 
-        subtitle = QLabel("Parcourez, sélectionnez puis installez vos applications en un clic.", h)
-        subtitle.setObjectName("PageSubtitle")
-        lay.addWidget(subtitle)
+        self.lbl_page_sub = QLabel(tr("page_subtitle"), h)
+        self.lbl_page_sub.setObjectName("PageSubtitle")
+        lay.addWidget(self.lbl_page_sub)
 
         # Barre de recherche — fine, longue, bordure #334155, loupe discrète
         self.search_bar = QLineEdit(h)
         self.search_bar.setObjectName("SearchBar")
         self.search_bar.setClearButtonEnabled(True)
-        self.search_bar.setPlaceholderText("Rechercher une application…  (nom, catégorie, identifiant)")
+        self.search_bar.setPlaceholderText(tr("search_placeholder"))
         self.search_bar.addAction(
             IconManager.get_ui_icon("search", 14, "#64748B"),
             QLineEdit.ActionPosition.LeadingPosition,
@@ -305,21 +328,21 @@ class MainWindow(QMainWindow):
         row = QHBoxLayout()
         row.setSpacing(8)
 
-        btn_all = _mk_quick("  Tout sélectionner", h, "check_all")
-        btn_all.clicked.connect(self._check_all)
-        row.addWidget(btn_all)
+        self.btn_all = _mk_quick(f"  {tr('select_all')}", h, "check_all")
+        self.btn_all.clicked.connect(self._check_all)
+        row.addWidget(self.btn_all)
 
-        btn_none = _mk_quick("  Effacer", h, "uncheck_all")
-        btn_none.clicked.connect(self._uncheck_all)
-        row.addWidget(btn_none)
+        self.btn_none = _mk_quick(f"  {tr('clear')}", h, "uncheck_all")
+        self.btn_none.clicked.connect(self._uncheck_all)
+        row.addWidget(self.btn_none)
 
-        btn_rec = QPushButton("  Recommandées", h)
-        btn_rec.setObjectName("BtnRecommended")
-        btn_rec.setIcon(IconManager.get_ui_icon("star", 13, "#94A3B8"))
-        btn_rec.setIconSize(QSize(13, 13))
-        btn_rec.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_rec.clicked.connect(self._select_recommended)
-        row.addWidget(btn_rec)
+        self.btn_rec = QPushButton(f"  {tr('recommended')}", h)
+        self.btn_rec.setObjectName("BtnRecommended")
+        self.btn_rec.setIcon(IconManager.get_ui_icon("star", 13, "#94A3B8"))
+        self.btn_rec.setIconSize(QSize(13, 13))
+        self.btn_rec.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_rec.clicked.connect(self._select_recommended)
+        row.addWidget(self.btn_rec)
 
         row.addStretch()
 
@@ -373,24 +396,24 @@ class MainWindow(QMainWindow):
         ico.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lay.addWidget(ico)
 
-        t = QLabel("Aucune application trouvée", w)
-        t.setStyleSheet("font-size: 14px; font-weight: 600; color: #94A3B8; background: transparent;")
-        t.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lay.addWidget(t)
+        self.lbl_empty_title = QLabel(tr("empty_title"), w)
+        self.lbl_empty_title.setStyleSheet("font-size: 14px; font-weight: 600; color: #94A3B8; background: transparent;")
+        self.lbl_empty_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lay.addWidget(self.lbl_empty_title)
 
-        d = QLabel("Essayez un autre terme ou ajoutez une application manuellement.", w)
-        d.setStyleSheet("font-size: 12px; color: #64748B; background: transparent;")
-        d.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lay.addWidget(d)
+        self.lbl_empty_desc = QLabel(tr("empty_desc"), w)
+        self.lbl_empty_desc.setStyleSheet("font-size: 12px; color: #64748B; background: transparent;")
+        self.lbl_empty_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lay.addWidget(self.lbl_empty_desc)
 
-        btn = QPushButton("  Ajouter une application", w)
-        btn.setObjectName("SearchOnlineBtn")
-        btn.setIcon(IconManager.get_ui_icon("plus", 13, "#94A3B8"))
-        btn.setIconSize(QSize(13, 13))
-        btn.setFixedWidth(230)
-        btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn.clicked.connect(self._open_store)
-        lay.addWidget(btn, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.btn_empty_add = QPushButton(f"  {tr('add_app')}", w)
+        self.btn_empty_add.setObjectName("SearchOnlineBtn")
+        self.btn_empty_add.setIcon(IconManager.get_ui_icon("plus", 13, "#94A3B8"))
+        self.btn_empty_add.setIconSize(QSize(13, 13))
+        self.btn_empty_add.setFixedWidth(230)
+        self.btn_empty_add.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_empty_add.clicked.connect(self._open_store)
+        lay.addWidget(self.btn_empty_add, alignment=Qt.AlignmentFlag.AlignCenter)
 
         return w
 
@@ -411,17 +434,17 @@ class MainWindow(QMainWindow):
         info = QVBoxLayout()
         info.setSpacing(2)
 
-        self.lbl_dock_title = QLabel("Prêt à installer", dock)
+        self.lbl_dock_title = QLabel(tr("dock_ready"), dock)
         self.lbl_dock_title.setObjectName("DockSummaryTitle")
         info.addWidget(self.lbl_dock_title)
 
-        self.lbl_dock_sub = QLabel("Aucune application sélectionnée", dock)
+        self.lbl_dock_sub = QLabel(tr("dock_none"), dock)
         self.lbl_dock_sub.setObjectName("DockSummarySubtitle")
         info.addWidget(self.lbl_dock_sub)
 
         row.addLayout(info, 1)
 
-        self.btn_log = QPushButton("  Console", dock)
+        self.btn_log = QPushButton(f"  {tr('console')}", dock)
         self.btn_log.setObjectName("ToggleLogButton")
         self.btn_log.setIcon(IconManager.get_ui_icon("terminal", 13, "#94A3B8"))
         self.btn_log.setIconSize(QSize(13, 13))
@@ -429,7 +452,7 @@ class MainWindow(QMainWindow):
         self.btn_log.clicked.connect(self._toggle_log)
         row.addWidget(self.btn_log)
 
-        self.btn_cancel = QPushButton("  Arrêter", dock)
+        self.btn_cancel = QPushButton(f"  {tr('stop')}", dock)
         self.btn_cancel.setObjectName("CancelButton")
         self.btn_cancel.setIcon(IconManager.get_ui_icon("stop", 13, "#94A3B8"))
         self.btn_cancel.setIconSize(QSize(13, 13))
@@ -438,7 +461,7 @@ class MainWindow(QMainWindow):
         self.btn_cancel.clicked.connect(self._cancel)
         row.addWidget(self.btn_cancel)
 
-        self.btn_install = QPushButton("  Installer (0)", dock)
+        self.btn_install = QPushButton(tr("install_n", n=0), dock)
         self.btn_install.setObjectName("InstallButton")
         self.btn_install.setIcon(IconManager.get_ui_icon("rocket", 15, "#06281E"))
         self.btn_install.setIconSize(QSize(15, 15))
@@ -512,7 +535,7 @@ class MainWindow(QMainWindow):
             self.empty_w.show()
 
         sel = sum(1 for c in self.app_cards if c.is_selected())
-        self.lbl_results.setText(f"{len(visible)} application(s)  ·  {sel} sélectionnée(s)")
+        self.lbl_results.setText(tr("results_vs", v=len(visible), s=sel))
 
     def resizeEvent(self, event: QResizeEvent):
         super().resizeEvent(event)
@@ -533,7 +556,7 @@ class MainWindow(QMainWindow):
             self.lbl_badge.setText(f"● {backend}")
             self.lbl_badge.setObjectName("SystemStatusBadgeReady")
         else:
-            self.lbl_badge.setText(f"● {backend} ABSENT")
+            self.lbl_badge.setText(f"● {backend} {tr('backend_missing')}")
             self.lbl_badge.setObjectName("SystemStatusBadgeWarn")
         self.lbl_badge.setToolTip(msg)
         self.lbl_badge.style().unpolish(self.lbl_badge)
@@ -573,23 +596,23 @@ class MainWindow(QMainWindow):
 
     def _update_counts(self):
         sel = sum(1 for c in self.app_cards if c.is_selected())
-        self.btn_sel_view.setText(f"  Sélectionnées ({sel})")
-        self.btn_install.setText(f"  Installer ({sel})")
+        self.btn_sel_view.setText(self._nav_text("Selectionnes"))
+        self.btn_install.setText(f"  {tr('install_n', n=sel)}")
         self.btn_install.setEnabled(sel > 0)
 
         if sel == 0:
-            self.lbl_dock_sub.setText("Aucune application sélectionnée")
+            self.lbl_dock_sub.setText(tr("dock_none"))
         elif sel == 1:
-            self.lbl_dock_sub.setText("1 application sélectionnée")
+            self.lbl_dock_sub.setText(tr("dock_one"))
         else:
-            self.lbl_dock_sub.setText(f"{sel} applications sélectionnées")
+            self.lbl_dock_sub.setText(tr("dock_many", n=sel))
 
         q = self.search_bar.text().strip().lower() if hasattr(self, "search_bar") else ""
         vis = sum(
             1 for c in self.app_cards
             if c.matches_category(self.current_category) and c.matches_query(q)
         )
-        self.lbl_results.setText(f"{vis} application(s)  ·  {sel} sélectionnée(s)")
+        self.lbl_results.setText(tr("results_vs", v=vis, s=sel))
 
     def _mark_installed_by_name(self, name: str):
         for c in self.app_cards:
@@ -601,29 +624,29 @@ class MainWindow(QMainWindow):
     def _toggle_log(self):
         v = self.log_console.isVisible()
         self.log_console.setVisible(not v)
-        self.btn_log.setText("  Masquer la console" if not v else "  Console")
+        self.btn_log.setText(f"  {tr('hide_console')}" if not v else f"  {tr('console')}")
 
     def _install(self):
         selected = [c.app_data for c in self.app_cards if c.is_selected()]
         if not selected:
-            QMessageBox.information(self, "Aucune sélection", "Sélectionnez au moins une application.")
+            QMessageBox.information(self, tr("no_selection_t"), tr("no_selection_m"))
             return
 
         self.log_console.setVisible(True)
-        self.btn_log.setText("  Masquer la console")
+        self.btn_log.setText(f"  {tr('hide_console')}")
         self.log_console.clear()
         self.progress.setVisible(True)
         self.progress.setValue(0)
         self.progress.setMaximum(len(selected))
         self.btn_install.setEnabled(False)
         self.btn_cancel.setEnabled(True)
-        self.lbl_dock_title.setText(f"Installation en cours… (0/{len(selected)})")
+        self.lbl_dock_title.setText(tr("installing_ct", c=0, t=len(selected)))
 
         self.active_worker = InstallationWorker(selected)
         self.active_worker.sig_log.connect(self._on_log)
         self.active_worker.sig_progress.connect(self._on_progress)
         self.active_worker.sig_current_app.connect(
-            lambda name: self.lbl_dock_title.setText(f"Installation : {name}")
+            lambda name: self.lbl_dock_title.setText(tr("installing_name", name=name))
         )
         self.active_worker.sig_finished.connect(self._on_done)
         self.active_worker.start()
@@ -631,13 +654,13 @@ class MainWindow(QMainWindow):
     def _cancel(self):
         if self.active_worker and self.active_worker.isRunning():
             reply = QMessageBox.question(
-                self, "Confirmer", "Interrompre l'installation en cours ?",
+                self, tr("confirm_t"), tr("confirm_m"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if reply == QMessageBox.StandardButton.Yes:
                 self.active_worker.cancel()
                 self.btn_cancel.setEnabled(False)
-                self.lbl_dock_title.setText("Arrêt en cours…")
+                self.lbl_dock_title.setText(tr("stopping"))
 
     def _on_log(self, msg: str, level: str):
         colors = {"info": "#94A3B8", "success": "#10B981", "warning": "#F59E0B", "error": "#EF4444"}
@@ -667,12 +690,12 @@ class MainWindow(QMainWindow):
         self.progress.setValue(total)
 
         if fail == 0:
-            self.lbl_dock_title.setText(f"{ok}/{total} installations réussies en {dur:.0f}s")
-            QMessageBox.information(self, "Terminé", f"{ok} application(s) installée(s) avec succès.")
+            self.lbl_dock_title.setText(tr("done_dock_ok", ok=ok, t=total, d=f"{dur:.0f}"))
+            QMessageBox.information(self, tr("done_ok_t"), tr("done_ok_m", ok=ok))
         else:
-            self.lbl_dock_title.setText(f"{ok} réussie(s), {fail} échec(s)")
-            QMessageBox.warning(self, "Terminé avec erreurs",
-                f"{ok} réussie(s), {fail} échec(s).\nConsultez la console pour les détails.")
+            self.lbl_dock_title.setText(tr("done_dock_err", ok=ok, fail=fail))
+            QMessageBox.warning(self, tr("done_err_t"),
+                tr("done_err_m", ok=ok, fail=fail))
         self._update_counts()
 
     def _open_store(self):
@@ -685,5 +708,46 @@ class MainWindow(QMainWindow):
         self.apps_data.insert(0, new_app)
         self._populate_cards()
         self._update_counts()
-        QMessageBox.information(self, "Application ajoutée",
-            f"'{new_app.get('name')}' a été ajoutée à la liste.")
+        QMessageBox.information(self, tr("app_added_t"),
+            tr("app_added_m", name=new_app.get('name')))
+
+    # ── Paramètres / langue ───────────────────────
+
+    def _open_settings(self):
+        dialog = LanguageDialog(self, mode="settings", current=get_language())
+        if dialog.exec():
+            set_language(dialog.selected_lang)
+            self._retranslate_ui()
+
+    def _retranslate_ui(self):
+        """Réapplique la langue à toute l'interface, sans redémarrage."""
+        self.lbl_brand_sub.setText(tr("brand_subtitle"))
+        self.lbl_nav_section.setText(tr("nav_section"))
+        self.lbl_cat_section.setText(tr("cat_section"))
+        for key, btn in self.nav_buttons.items():
+            if key in ("Recommandes", "Toutes", "Selectionnes"):
+                btn.setText(self._nav_text(key))
+            else:
+                count = sum(1 for a in self.apps_data if a.get("category") == key)
+                btn.setText(self._nav_text(key, count))
+        self.btn_settings.setText(f"  {tr('settings')}")
+        self.btn_store.setText(f"  {tr('add_app')}")
+        self.lbl_page_title.setText(tr("page_title"))
+        self.lbl_page_sub.setText(tr("page_subtitle"))
+        self.search_bar.setPlaceholderText(tr("search_placeholder"))
+        self.btn_all.setText(f"  {tr('select_all')}")
+        self.btn_none.setText(f"  {tr('clear')}")
+        self.btn_rec.setText(f"  {tr('recommended')}")
+        self.lbl_empty_title.setText(tr("empty_title"))
+        self.lbl_empty_desc.setText(tr("empty_desc"))
+        self.btn_empty_add.setText(f"  {tr('add_app')}")
+        if not (self.active_worker and self.active_worker.isRunning()):
+            self.lbl_dock_title.setText(tr("dock_ready"))
+        self.btn_log.setText(
+            f"  {tr('hide_console')}" if self.log_console.isVisible()
+            else f"  {tr('console')}"
+        )
+        self.btn_cancel.setText(f"  {tr('stop')}")
+        self._populate_cards()
+        self._update_counts()
+        self._check_backend()

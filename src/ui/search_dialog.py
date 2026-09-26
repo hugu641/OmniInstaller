@@ -23,6 +23,7 @@ from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from src.installer_backend import is_windows, is_linux
 from src.search_service import SearchWorker
 from src.ui.icon_manager import IconManager
+from src.i18n import tr
 
 
 class SearchResultItem(QFrame):
@@ -87,7 +88,7 @@ class SearchResultItem(QFrame):
         layout.addLayout(info_layout, 1)
 
         # Bouton Ajouter
-        btn_add = QPushButton("  Ajouter", self)
+        btn_add = QPushButton(f"  {tr('add')}", self)
         btn_add.setIcon(IconManager.get_ui_icon("plus", 14))
         btn_add.setIconSize(QSize(14, 14))
         btn_add.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -120,7 +121,7 @@ class SearchAddDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Explorer le Store & Ajouter des Applications")
+        self.setWindowTitle(tr("store_title"))
         self.resize(700, 560)
         self.setModal(True)
 
@@ -161,13 +162,13 @@ class SearchAddDialog(QDialog):
         tab_online = QWidget()
         self._setup_online_tab(tab_online)
         source_name = "Flathub" if is_linux() else "Winget"
-        tabs.addTab(tab_online, f"Recherche en ligne ({source_name})")
+        tabs.addTab(tab_online, tr("tab_online", source=source_name))
         tabs.setTabIcon(0, IconManager.get_ui_icon("globe", 16))
 
         # Onglet 2 : Ajout manuel
         tab_manual = QWidget()
         self._setup_manual_tab(tab_manual)
-        tabs.addTab(tab_manual, "Ajout manuel par ID")
+        tabs.addTab(tab_manual, tr("tab_manual"))
         tabs.setTabIcon(1, IconManager.get_ui_icon("code", 16))
 
         layout.addWidget(tabs)
@@ -175,7 +176,7 @@ class SearchAddDialog(QDialog):
         # Bouton Fermer
         bottom_row = QHBoxLayout()
         bottom_row.addStretch()
-        btn_close = QPushButton("Fermer", self)
+        btn_close = QPushButton(tr("close"), self)
         btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_close.setStyleSheet("""
             QPushButton {
@@ -206,7 +207,7 @@ class SearchAddDialog(QDialog):
         search_row.setSpacing(10)
 
         self.search_input = QLineEdit(self)
-        self.search_input.setPlaceholderText("Ex: blender, vlc, discord, steam, code, obsidian...")
+        self.search_input.setPlaceholderText(tr("search_ph"))
         self.search_input.addAction(IconManager.get_ui_icon("search", 16), QLineEdit.ActionPosition.LeadingPosition)
         self.search_input.setStyleSheet("""
             QLineEdit {
@@ -225,7 +226,7 @@ class SearchAddDialog(QDialog):
         self.search_input.returnPressed.connect(self._start_search)
         search_row.addWidget(self.search_input, 1)
 
-        btn_search = QPushButton("  Rechercher", self)
+        btn_search = QPushButton(f"  {tr('search_btn')}", self)
         btn_search.setIcon(IconManager.get_ui_icon("search", 15))
         btn_search.setIconSize(QSize(15, 15))
         btn_search.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -266,7 +267,7 @@ class SearchAddDialog(QDialog):
         self.loading_bar.setVisible(False)
         layout.addWidget(self.loading_bar)
 
-        self.status_lbl = QLabel("Entrez un nom ou mot-clé pour lancer la recherche en direct.", self)
+        self.status_lbl = QLabel(tr("status_hint"), self)
         self.status_lbl.setStyleSheet("color: #64748B; font-size: 11.5px;")
         layout.addWidget(self.status_lbl)
 
@@ -289,12 +290,7 @@ class SearchAddDialog(QDialog):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
-        info_lbl = QLabel(
-            "Ajoutez n'importe quel paquet en spécifiant son identifiant officiel :\n"
-            "• Windows : ID Winget officiel (ex: 'Valve.Steam', '7zip.7zip', 'Spotify.Spotify')\n"
-            "• Linux : ID Flatpak ou nom APT (ex: 'org.videolan.VLC', 'com.brave.Browser')",
-            self,
-        )
+        info_lbl = QLabel(tr("manual_info"), self)
         info_lbl.setStyleSheet("color: #94A3B8; font-size: 11.5px;")
         layout.addWidget(info_lbl)
 
@@ -314,43 +310,43 @@ class SearchAddDialog(QDialog):
         """
 
         # Nom
-        lbl1 = QLabel("Nom affiché de l'application :", self)
+        lbl1 = QLabel(tr("f_name"), self)
         lbl1.setStyleSheet("color: #F1F5F9; font-weight: 600; font-size: 12px;")
         layout.addWidget(lbl1)
         self.manual_name = QLineEdit(self)
-        self.manual_name.setPlaceholderText("Ex: Steam, Blender, Docker Desktop...")
+        self.manual_name.setPlaceholderText(tr("f_name_ph"))
         self.manual_name.setStyleSheet(input_style)
         layout.addWidget(self.manual_name)
 
         # Identifiant
-        lbl2 = QLabel("Identifiant du paquet (Winget / Flatpak) :", self)
+        lbl2 = QLabel(tr("f_id"), self)
         lbl2.setStyleSheet("color: #F1F5F9; font-weight: 600; font-size: 12px;")
         layout.addWidget(lbl2)
         self.manual_id = QLineEdit(self)
-        self.manual_id.setPlaceholderText("Ex: Valve.Steam ou org.videolan.VLC")
+        self.manual_id.setPlaceholderText(tr("f_id_ph"))
         self.manual_id.setStyleSheet(input_style)
         layout.addWidget(self.manual_id)
 
         # Catégorie
-        lbl3 = QLabel("Catégorie :", self)
+        lbl3 = QLabel(tr("f_cat"), self)
         lbl3.setStyleSheet("color: #F1F5F9; font-weight: 600; font-size: 12px;")
         layout.addWidget(lbl3)
         self.manual_cat = QLineEdit(self)
-        self.manual_cat.setText("Personnalisé")
+        self.manual_cat.setText(tr("custom_cat"))
         self.manual_cat.setStyleSheet(input_style)
         layout.addWidget(self.manual_cat)
 
         # Description
-        lbl4 = QLabel("Description courte (optionnel) :", self)
+        lbl4 = QLabel(tr("f_desc"), self)
         lbl4.setStyleSheet("color: #F1F5F9; font-weight: 600; font-size: 12px;")
         layout.addWidget(lbl4)
         self.manual_desc = QLineEdit(self)
-        self.manual_desc.setPlaceholderText("Ex: Plateforme de jeux vidéo")
+        self.manual_desc.setPlaceholderText(tr("f_desc_ph"))
         self.manual_desc.setStyleSheet(input_style)
         layout.addWidget(self.manual_desc)
 
         # Bouton Ajouter
-        btn_add_manual = QPushButton("  Ajouter cette application au catalogue", self)
+        btn_add_manual = QPushButton(f"  {tr('add_catalog_btn')}", self)
         btn_add_manual.setIcon(IconManager.get_ui_icon("plus", 16))
         btn_add_manual.setIconSize(QSize(16, 16))
         btn_add_manual.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -380,7 +376,7 @@ class SearchAddDialog(QDialog):
             return
 
         self.loading_bar.setVisible(True)
-        self.status_lbl.setText(f"Recherche de '{query}' en cours...")
+        self.status_lbl.setText(tr("searching", q=query))
 
         # Nettoyer les anciens résultats
         self._clear_results()
@@ -393,10 +389,10 @@ class SearchAddDialog(QDialog):
     def _on_search_results(self, results: List[Dict]):
         self.loading_bar.setVisible(False)
         if not results:
-            self.status_lbl.setText("Aucun résultat trouvé.")
+            self.status_lbl.setText(tr("no_result"))
             return
 
-        self.status_lbl.setText(f"{len(results)} résultat(s) trouvé(s) :")
+        self.status_lbl.setText(tr("results_found", n=len(results)))
         for item_data in results:
             item_widget = SearchResultItem(item_data, self.results_container)
             item_widget.sig_add.connect(self._on_app_selected)
@@ -404,7 +400,7 @@ class SearchAddDialog(QDialog):
 
     def _on_search_error(self, err_msg: str):
         self.loading_bar.setVisible(False)
-        self.status_lbl.setText(f"Erreur : {err_msg}")
+        self.status_lbl.setText(tr("search_error", err=err_msg))
 
     def _clear_results(self):
         while self.results_layout.count() > 1:
@@ -417,7 +413,7 @@ class SearchAddDialog(QDialog):
         new_app = {
             "id": app_data.get("id").replace(".", "_").lower(),
             "name": app_data.get("name"),
-            "category": "Personnalisé",
+            "category": tr("custom_cat"),
             "desc": app_data.get("summary", ""),
             "icon": app_data.get("icon", "📦"),
             "windows_id": app_data.get("windows_id") or app_data.get("id"),
@@ -428,18 +424,18 @@ class SearchAddDialog(QDialog):
         self.sig_app_added.emit(new_app)
         QMessageBox.information(
             self,
-            "Application Ajoutée",
-            f"L'application '{new_app['name']}' a été ajoutée avec succès à votre catalogue !",
+            tr("added_t"),
+            tr("added_m", name=new_app['name']),
         )
 
     def _add_manual_app(self):
         name = self.manual_name.text().strip()
         pkg_id = self.manual_id.text().strip()
-        cat = self.manual_cat.text().strip() or "Personnalisé"
-        desc = self.manual_desc.text().strip() or f"Paquet {pkg_id}"
+        cat = self.manual_cat.text().strip() or tr("custom_cat")
+        desc = self.manual_desc.text().strip() or tr("pkg_word", pkg=pkg_id)
 
         if not name or not pkg_id:
-            QMessageBox.warning(self, "Champs requis", "Veuillez renseigner le nom et l'identifiant du paquet.")
+            QMessageBox.warning(self, tr("required_t"), tr("required_m"))
             return
 
         new_app = {
@@ -456,8 +452,8 @@ class SearchAddDialog(QDialog):
         self.sig_app_added.emit(new_app)
         QMessageBox.information(
             self,
-            "Application Ajoutée",
-            f"L'application '{name}' a été ajoutée avec succès à votre catalogue !",
+            tr("added_t"),
+            tr("added_m", name=name),
         )
         self.manual_name.clear()
         self.manual_id.clear()
