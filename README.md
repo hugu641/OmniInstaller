@@ -18,7 +18,6 @@
 [Téléchargement & Utilisation](#-téléchargement--utilisation) •
 [Recherche d'Applications](#-recherche--catalogue-extensible) •
 [Compilation (.exe & Linux)](#-compilation-locale) •
-[Publication GitHub](#-publier-sur-votre-compte-github)
 
 ---
 
