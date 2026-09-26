@@ -1,7 +1,7 @@
 """
 Boîte de dialogue de recherche et d'ajout d'applications personnalisées.
 Permet d'interroger les dépôts en ligne (Flathub / Winget)
-ou d'ajouter directement un identifiant de paquet.
+ou d'ajouter directement un identifiant de paquet avec un design moderne.
 """
 
 from typing import Dict, List
@@ -19,13 +19,14 @@ from PyQt6.QtWidgets import (
     QProgressBar,
     QMessageBox,
 )
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from src.installer_backend import is_windows, is_linux
 from src.search_service import SearchWorker
+from src.ui.icon_manager import IconManager
 
 
 class SearchResultItem(QFrame):
-    """Ligne représentant un résultat de recherche en ligne."""
+    """Ligne représentant un résultat de recherche en ligne avec rendu moderne."""
 
     sig_add = pyqtSignal(dict)
 
@@ -34,59 +35,75 @@ class SearchResultItem(QFrame):
         self.data = data
         self.setStyleSheet("""
             QFrame {
-                background-color: #1e293b;
+                background-color: #1E293B;
                 border: 1px solid #334155;
                 border-radius: 8px;
-                padding: 6px 10px;
             }
             QFrame:hover {
-                border-color: #6366f1;
-                background-color: #24324a;
+                border-color: #475569;
+                background-color: #24334D;
             }
         """)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 6, 8, 6)
-        layout.setSpacing(10)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(14)
 
-        # Icône
-        icon_lbl = QLabel(data.get("icon", "📦"), self)
-        icon_lbl.setStyleSheet("font-size: 18px;")
-        layout.addWidget(icon_lbl)
+        # Conteneur logo officiel ou monogramme
+        logo_container = QFrame(self)
+        logo_container.setFixedSize(42, 42)
+        logo_container.setStyleSheet("""
+            background-color: #0F172A;
+            border: 1px solid #334155;
+            border-radius: 8px;
+        """)
+        logo_layout = QVBoxLayout(logo_container)
+        logo_layout.setContentsMargins(0, 0, 0, 0)
+        logo_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        icon_lbl = QLabel(logo_container)
+        icon_lbl.setPixmap(IconManager.get_app_pixmap(data, size=32))
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo_layout.addWidget(icon_lbl)
+        layout.addWidget(logo_container)
 
         # Infos
         info_layout = QVBoxLayout()
-        info_layout.setSpacing(2)
+        info_layout.setSpacing(3)
 
-        name_lbl = QLabel(f"<b>{data.get('name')}</b>", self)
-        name_lbl.setStyleSheet("color: #f8fafc; font-size: 13px;")
+        name_lbl = QLabel(data.get("name", "Application"), self)
+        name_lbl.setStyleSheet("color: #F1F5F9; font-size: 13.5px; font-weight: 600; background: transparent;")
         info_layout.addWidget(name_lbl)
 
         desc_lbl = QLabel(data.get("summary", ""), self)
-        desc_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
+        desc_lbl.setStyleSheet("color: #94A3B8; font-size: 11px; background: transparent;")
         desc_lbl.setWordWrap(True)
         info_layout.addWidget(desc_lbl)
 
-        id_lbl = QLabel(f"ID : {data.get('id')}  •  Source : {data.get('source')}", self)
-        id_lbl.setStyleSheet("color: #64748b; font-size: 10px; font-family: monospace;")
+        id_lbl = QLabel(f"{data.get('source', 'dépôt')} • {data.get('id')}", self)
+        id_lbl.setStyleSheet("color: #64748B; font-size: 10px; font-family: 'Consolas', monospace; background: transparent;")
         info_layout.addWidget(id_lbl)
 
         layout.addLayout(info_layout, 1)
 
         # Bouton Ajouter
-        btn_add = QPushButton("➕ Ajouter", self)
+        btn_add = QPushButton("  Ajouter", self)
+        btn_add.setIcon(IconManager.get_ui_icon("plus", 14))
+        btn_add.setIconSize(QSize(14, 14))
+        btn_add.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_add.setStyleSheet("""
             QPushButton {
-                background-color: #6366f1;
-                color: #ffffff;
+                background-color: #10B981;
+                color: #06281E;
                 border: none;
                 border-radius: 6px;
-                padding: 6px 14px;
-                font-weight: 600;
+                padding: 7px 16px;
+                font-weight: 700;
                 font-size: 12px;
             }
             QPushButton:hover {
-                background-color: #4f46e5;
+                background-color: #059669;
+                color: #FFFFFF;
             }
         """)
         btn_add.clicked.connect(self._on_add)
@@ -99,12 +116,12 @@ class SearchResultItem(QFrame):
 class SearchAddDialog(QDialog):
     """Dialogue modal permettant de chercher et ajouter des applications."""
 
-    sig_app_added = pyqtSignal(dict)  # Émis quand une nouvelle application est ajoutée
+    sig_app_added = pyqtSignal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Rechercher ou Ajouter une Application")
-        self.resize(650, 520)
+        self.setWindowTitle("Explorer le Store & Ajouter des Applications")
+        self.resize(700, 560)
         self.setModal(True)
 
         self._search_worker = None
@@ -112,28 +129,31 @@ class SearchAddDialog(QDialog):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(14)
 
         tabs = QTabWidget(self)
         tabs.setStyleSheet("""
             QTabWidget::pane {
-                border: 1px solid #334155;
-                background-color: #0f172a;
+                border: 1px solid #1E293B;
+                background-color: #0F172A;
                 border-radius: 8px;
+                padding: 8px;
             }
             QTabBar::tab {
-                background-color: #1e293b;
-                color: #94a3b8;
-                padding: 8px 16px;
-                margin-right: 4px;
+                background-color: transparent;
+                color: #64748B;
+                padding: 9px 18px;
+                margin-right: 6px;
                 border-top-left-radius: 6px;
                 border-top-right-radius: 6px;
+                font-weight: 600;
+                font-size: 12.5px;
             }
             QTabBar::tab:selected {
-                background-color: #6366f1;
-                color: #ffffff;
-                font-weight: bold;
+                background-color: #1E293B;
+                color: #F1F5F9;
+                border-bottom: 2px solid #10B981;
             }
         """)
 
@@ -141,12 +161,14 @@ class SearchAddDialog(QDialog):
         tab_online = QWidget()
         self._setup_online_tab(tab_online)
         source_name = "Flathub" if is_linux() else "Winget"
-        tabs.addTab(tab_online, f"🔍 Recherche en ligne ({source_name})")
+        tabs.addTab(tab_online, f"Recherche en ligne ({source_name})")
+        tabs.setTabIcon(0, IconManager.get_ui_icon("globe", 16))
 
         # Onglet 2 : Ajout manuel
         tab_manual = QWidget()
         self._setup_manual_tab(tab_manual)
-        tabs.addTab(tab_manual, "✏️ Ajout manuel par ID")
+        tabs.addTab(tab_manual, "Ajout manuel par ID")
+        tabs.setTabIcon(1, IconManager.get_ui_icon("code", 16))
 
         layout.addWidget(tabs)
 
@@ -154,35 +176,73 @@ class SearchAddDialog(QDialog):
         bottom_row = QHBoxLayout()
         bottom_row.addStretch()
         btn_close = QPushButton("Fermer", self)
-        btn_close.setProperty("class", "ActionButton")
+        btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_close.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #94A3B8;
+                border: 1px solid #334155;
+                border-radius: 6px;
+                padding: 8px 20px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #1E293B;
+                color: #F1F5F9;
+            }
+        """)
         btn_close.clicked.connect(self.accept)
         bottom_row.addWidget(btn_close)
         layout.addLayout(bottom_row)
 
     def _setup_online_tab(self, parent_widget: QWidget):
         layout = QVBoxLayout(parent_widget)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(10)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(12)
 
         # Barre de recherche
         search_row = QHBoxLayout()
+        search_row.setSpacing(10)
+
         self.search_input = QLineEdit(self)
-        self.search_input.setPlaceholderText("Ex: blender, vlc, discord, steam, code...")
-        self.search_input.setProperty("class", "SearchBar")
+        self.search_input.setPlaceholderText("Ex: blender, vlc, discord, steam, code, obsidian...")
+        self.search_input.addAction(IconManager.get_ui_icon("search", 16), QLineEdit.ActionPosition.LeadingPosition)
+        self.search_input.setStyleSheet("""
+            QLineEdit {
+                background-color: #1E293B;
+                border: 1px solid #334155;
+                border-radius: 7px;
+                padding: 7px 12px;
+                color: #F1F5F9;
+                font-size: 13px;
+            }
+            QLineEdit:focus {
+                border-color: #10B981;
+                background-color: #1A2742;
+            }
+        """)
         self.search_input.returnPressed.connect(self._start_search)
         search_row.addWidget(self.search_input, 1)
 
-        btn_search = QPushButton("Rechercher", self)
+        btn_search = QPushButton("  Rechercher", self)
+        btn_search.setIcon(IconManager.get_ui_icon("search", 15))
+        btn_search.setIconSize(QSize(15, 15))
+        btn_search.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_search.setStyleSheet("""
             QPushButton {
-                background-color: #6366f1;
-                color: white;
+                background-color: #10B981;
+                color: #06281E;
                 border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: 600;
+                border-radius: 7px;
+                padding: 8px 18px;
+                font-weight: 700;
+                font-size: 12.5px;
             }
-            QPushButton:hover { background-color: #4f46e5; }
+            QPushButton:hover {
+                background-color: #059669;
+                color: #FFFFFF;
+            }
         """)
         btn_search.clicked.connect(self._start_search)
         search_row.addWidget(btn_search)
@@ -192,11 +252,22 @@ class SearchAddDialog(QDialog):
         self.loading_bar = QProgressBar(self)
         self.loading_bar.setRange(0, 0)
         self.loading_bar.setFixedHeight(4)
+        self.loading_bar.setStyleSheet("""
+            QProgressBar {
+                background-color: #1E293B;
+                border: none;
+                border-radius: 2px;
+            }
+            QProgressBar::chunk {
+                background-color: #10B981;
+                border-radius: 2px;
+            }
+        """)
         self.loading_bar.setVisible(False)
         layout.addWidget(self.loading_bar)
 
-        self.status_lbl = QLabel("Entrez un nom ou mot-clé pour lancer la recherche.", self)
-        self.status_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
+        self.status_lbl = QLabel("Entrez un nom ou mot-clé pour lancer la recherche en direct.", self)
+        self.status_lbl.setStyleSheet("color: #64748B; font-size: 11.5px;")
         layout.addWidget(self.status_lbl)
 
         # Zone de défilement des résultats
@@ -207,7 +278,7 @@ class SearchAddDialog(QDialog):
         self.results_container = QWidget()
         self.results_layout = QVBoxLayout(self.results_container)
         self.results_layout.setContentsMargins(0, 0, 0, 0)
-        self.results_layout.setSpacing(6)
+        self.results_layout.setSpacing(8)
         self.results_layout.addStretch()
 
         self.results_scroll.setWidget(self.results_container)
@@ -219,56 +290,85 @@ class SearchAddDialog(QDialog):
         layout.setSpacing(12)
 
         info_lbl = QLabel(
-            "Ajoutez manuellement une application en fournissant son nom et son identifiant officiel :\n"
-            "• Sur Windows : Identifiant Winget (ex: '7zip.7zip', 'Valve.Steam')\n"
-            "• Sur Linux : Identifiant Flatpak (ex: 'org.videolan.VLC', 'com.brave.Browser')",
-            self
+            "Ajoutez n'importe quel paquet en spécifiant son identifiant officiel :\n"
+            "• Windows : ID Winget officiel (ex: 'Valve.Steam', '7zip.7zip', 'Spotify.Spotify')\n"
+            "• Linux : ID Flatpak ou nom APT (ex: 'org.videolan.VLC', 'com.brave.Browser')",
+            self,
         )
-        info_lbl.setStyleSheet("color: #94a3b8; font-size: 11px; line-height: 1.4;")
+        info_lbl.setStyleSheet("color: #94A3B8; font-size: 11.5px;")
         layout.addWidget(info_lbl)
 
+        input_style = """
+            QLineEdit {
+                background-color: #1E293B;
+                border: 1px solid #334155;
+                border-radius: 6px;
+                padding: 7px 12px;
+                color: #F1F5F9;
+                font-size: 12.5px;
+            }
+            QLineEdit:focus {
+                border-color: #10B981;
+                background-color: #1A2742;
+            }
+        """
+
         # Nom
-        layout.addWidget(QLabel("Nom de l'application :", self))
+        lbl1 = QLabel("Nom affiché de l'application :", self)
+        lbl1.setStyleSheet("color: #F1F5F9; font-weight: 600; font-size: 12px;")
+        layout.addWidget(lbl1)
         self.manual_name = QLineEdit(self)
-        self.manual_name.setPlaceholderText("Ex: Blender 3D")
-        self.manual_name.setStyleSheet("background-color: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px;")
+        self.manual_name.setPlaceholderText("Ex: Steam, Blender, Docker Desktop...")
+        self.manual_name.setStyleSheet(input_style)
         layout.addWidget(self.manual_name)
 
         # Identifiant
-        layout.addWidget(QLabel("Identifiant du paquet (Winget / Flatpak) :", self))
+        lbl2 = QLabel("Identifiant du paquet (Winget / Flatpak) :", self)
+        lbl2.setStyleSheet("color: #F1F5F9; font-weight: 600; font-size: 12px;")
+        layout.addWidget(lbl2)
         self.manual_id = QLineEdit(self)
-        self.manual_id.setPlaceholderText("Ex: BlenderFoundation.Blender ou org.blender.Blender")
-        self.manual_id.setStyleSheet("background-color: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px;")
+        self.manual_id.setPlaceholderText("Ex: Valve.Steam ou org.videolan.VLC")
+        self.manual_id.setStyleSheet(input_style)
         layout.addWidget(self.manual_id)
 
         # Catégorie
-        layout.addWidget(QLabel("Catégorie :", self))
+        lbl3 = QLabel("Catégorie :", self)
+        lbl3.setStyleSheet("color: #F1F5F9; font-weight: 600; font-size: 12px;")
+        layout.addWidget(lbl3)
         self.manual_cat = QLineEdit(self)
         self.manual_cat.setText("Personnalisé")
-        self.manual_cat.setStyleSheet("background-color: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px;")
+        self.manual_cat.setStyleSheet(input_style)
         layout.addWidget(self.manual_cat)
 
         # Description
-        layout.addWidget(QLabel("Description (optionnel) :", self))
+        lbl4 = QLabel("Description courte (optionnel) :", self)
+        lbl4.setStyleSheet("color: #F1F5F9; font-weight: 600; font-size: 12px;")
+        layout.addWidget(lbl4)
         self.manual_desc = QLineEdit(self)
-        self.manual_desc.setPlaceholderText("Description courte de l'application")
-        self.manual_desc.setStyleSheet("background-color: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px;")
+        self.manual_desc.setPlaceholderText("Ex: Plateforme de jeux vidéo")
+        self.manual_desc.setStyleSheet(input_style)
         layout.addWidget(self.manual_desc)
 
         # Bouton Ajouter
-        btn_add_manual = QPushButton("➕ Ajouter cette application", self)
+        btn_add_manual = QPushButton("  Ajouter cette application au catalogue", self)
+        btn_add_manual.setIcon(IconManager.get_ui_icon("plus", 16))
+        btn_add_manual.setIconSize(QSize(16, 16))
+        btn_add_manual.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_add_manual.setStyleSheet("""
             QPushButton {
-                background-color: #10b981;
-                color: #ffffff;
+                background-color: #10B981;
+                color: #06281E;
                 border: none;
-                border-radius: 6px;
-                padding: 10px 18px;
+                border-radius: 7px;
+                padding: 10px 20px;
                 font-weight: 700;
                 font-size: 13px;
-                margin-top: 10px;
+                margin-top: 8px;
             }
-            QPushButton:hover { background-color: #059669; }
+            QPushButton:hover {
+                background-color: #059669;
+                color: #FFFFFF;
+            }
         """)
         btn_add_manual.clicked.connect(self._add_manual_app)
         layout.addWidget(btn_add_manual)
@@ -329,7 +429,7 @@ class SearchAddDialog(QDialog):
         QMessageBox.information(
             self,
             "Application Ajoutée",
-            f"L'application '{new_app['name']}' a été ajoutée avec succès à votre sélection !"
+            f"L'application '{new_app['name']}' a été ajoutée avec succès à votre catalogue !",
         )
 
     def _add_manual_app(self):
@@ -357,7 +457,7 @@ class SearchAddDialog(QDialog):
         QMessageBox.information(
             self,
             "Application Ajoutée",
-            f"L'application '{name}' a été ajoutée avec succès à votre sélection !"
+            f"L'application '{name}' a été ajoutée avec succès à votre catalogue !",
         )
         self.manual_name.clear()
         self.manual_id.clear()

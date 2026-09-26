@@ -15,6 +15,14 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IS_WINDOWS = sys.platform == "win32"
 IS_LINUX = sys.platform.startswith("linux")
 
+# Support encodage console Windows UTF-8 / emojis
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+
 
 def build():
     print("=" * 60)
@@ -32,14 +40,16 @@ def build():
 
     # Chemins
     main_script = os.path.join(BASE_DIR, "main.py")
-    icon_png = os.path.join(BASE_DIR, "assets", "icon.png")
-    icon_ico = os.path.join(BASE_DIR, "assets", "icon.ico")
+    assets_dir = os.path.join(BASE_DIR, "assets")
+    icon_png = os.path.join(assets_dir, "icon.png")
+    icon_ico = os.path.join(assets_dir, "icon.ico")
     dist_dir = os.path.join(BASE_DIR, "dist")
     build_dir = os.path.join(BASE_DIR, "build")
 
     # Options PyInstaller
     sep = ";" if IS_WINDOWS else ":"
-    data_arg = f"{icon_png}{sep}assets"
+    data_arg = f"{assets_dir}{sep}assets"
+
 
     target_name = "OmniInstaller" if IS_WINDOWS else "OmniInstaller-Linux"
     icon_file = icon_ico if (IS_WINDOWS and os.path.exists(icon_ico)) else icon_png
