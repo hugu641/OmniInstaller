@@ -21,6 +21,7 @@ from PyQt6.QtGui import QMouseEvent
 from src.installer_backend import is_windows
 from src.ui.icon_manager import IconManager
 from src.i18n import tr, tr_category
+from src.catalog_i18n import tr_desc
 
 
 class AppCard(QFrame):
@@ -96,8 +97,8 @@ class AppCard(QFrame):
 
         lay.addLayout(top)
 
-        # ── Description courte (2 lignes max, ton secondaire) ──
-        desc = (self.app_data.get("desc", "") or "").strip()
+        # ── Description courte traduite (2 lignes max, ton secondaire) ──
+        desc = tr_desc(self.app_data).strip()
         if desc:
             self.desc_lbl = QLabel(desc, self)
             self.desc_lbl.setObjectName("CardAppDesc")
@@ -205,10 +206,14 @@ class AppCard(QFrame):
     def matches_query(self, q: str) -> bool:
         if not q:
             return True
-        return any(
-            q in (self.app_data.get(k) or "").lower()
+        fields = [
+            self.app_data.get(k) or ""
             for k in ("name", "desc", "category", "windows_id", "linux_id")
-        )
+        ]
+        # Recherche aussi dans la description et la catégorie traduites
+        fields.append(tr_desc(self.app_data))
+        fields.append(tr_category(self.app_data.get("category", "")))
+        return any(q in f.lower() for f in fields)
 
     def matches_category(self, cat: str) -> bool:
         if not cat or cat in ("Toutes", "Toutes les applications"):
