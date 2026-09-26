@@ -164,41 +164,6 @@ chmod +x build_linux.sh
 ```
 L'exécutable autonome est généré dans `dist/OmniInstaller-Linux`.
 
----
-
-## 🚀 Publier sur votre compte GitHub
-
-Pour publier ce projet en public sur votre propre compte GitHub :
-
-### 1. Créez un nouveau dépôt sur GitHub
-1. Connectez-vous sur [github.com](https://github.com).
-2. Cliquez sur le bouton vert **"New"** (Nouveau dépôt).
-3. Nommez le dépôt (ex: `OmniInstaller` ou `Installer-Apps-Windows`).
-4. Choisissez la visibilité **Public**.
-5. **Ne cochez pas** "Add a README" ni "Add .gitignore" (ils sont déjà prêts dans votre projet !).
-6. Cliquez sur **"Create repository"**.
-
-### 2. Liez et envoyez vos fichiers depuis le terminal
-Exécutez simplement les commandes suivantes dans ce dossier :
-
-```bash
-# 1. Configurer votre identité Git (si ce n'est pas déjà fait)
-git config --global user.name "Votre Nom ou Pseudo"
-git config --global user.email "votre-email@example.com"
-
-# 2. Relier à votre dépôt GitHub distant (remplacez VOTRE_PSEUDO et VOTRE_DEPOT)
-git remote add origin https://github.com/VOTRE_PSEUDO/Installer-Apps-Windows.git
-
-# 3. Envoyer votre code sur GitHub
-git branch -M main
-git push -u origin main
-```
-
-### 3. Activer la compilation automatique des fichiers `.exe`
-Dès que vous envoyez votre code ou créez un tag (ex: `git tag v1.0.0 && git push origin v1.0.0`), **GitHub Actions** va automatiquement compiler l'application sous Windows et Linux et placer `OmniInstaller.exe` et `OmniInstaller-Linux` dans la section **Releases** de votre dépôt GitHub !
-
----
-
 ## 📜 Licence
 
 Ce projet est sous licence **MIT**. Vous êtes libre de l'utiliser, le modifier et le distribuer comme bon vous semble. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
